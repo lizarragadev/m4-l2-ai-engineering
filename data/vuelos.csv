@@ -1,0 +1,4 @@
+codigo,origen,destino,estado,demora_minutos,motivo,hora_salida,reserva,pasajero_id
+OA1203,AEP,LIM,Demorado,95,Causa operativa,14:05,B8NN4C,P-1002
+OA2201,LIM,AEP,A tiempo,0,,18:40,,
+OA3305,AEP,SCL,Programado,0,,20:15,,

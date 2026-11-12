@@ -1,0 +1,90 @@
+name: OrbitAir CI y deploy
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: test
+    runs-on: ubuntu-latest
+    env:
+      APP_ENV: test
+      LLM_MODO_SIMULADO: "true"
+      OPENAI_API_KEY: ""
+      GIT_COMMIT: ${{ github.sha }}
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+      - name: Configurar Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.lock
+            requirements-dev.lock
+      - name: Instalar dependencias
+        run: python -m pip install -r requirements.lock -r requirements-dev.lock
+      - name: Ejecutar pruebas
+        run: pytest -q
+
+  imagen:
+    name: imagen
+    runs-on: ubuntu-latest
+    needs: test
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+      - name: Construir imagen
+        run: docker build -t orbitair-ci:${{ github.sha }} .
+      - name: Ejecutar contenedor de prueba
+        run: |
+          docker run -d --name orbitair-ci -p 8000:8000 \
+            -e APP_ENV=test -e LLM_MODO_SIMULADO=true \
+            -e GIT_COMMIT=${{ github.sha }} orbitair-ci:${{ github.sha }}
+      - name: Esperar readiness y ejecutar consulta
+        run: |
+          for i in $(seq 1 30); do
+            if curl --fail --silent http://127.0.0.1:8000/ready; then break; fi
+            sleep 2
+          done
+          curl --fail --silent http://127.0.0.1:8000/ready
+          curl --fail --silent -X POST http://127.0.0.1:8000/v1/consultas \
+            -H 'Authorization: Bearer oa_lucia_demo_2026_key_7f3a91' \
+            -H 'Content-Type: application/json' \
+            -d '{"mensaje":"¿Cómo viene el vuelo OA1203?"}'
+      - name: Logs y limpieza aunque falle un paso
+        if: always()
+        run: |
+          docker logs orbitair-ci || true
+          docker rm -f orbitair-ci || true
+
+  deploy:
+    name: deploy
+    runs-on: ubuntu-latest
+    needs: [test, imagen]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    steps:
+      - name: Descargar código
+        uses: actions/checkout@v4
+      - name: Instalar Railway CLI
+        run: npm install -g @railway/cli
+      - name: Desplegar en Railway
+        env:
+          RAILWAY_TOKEN: ${{ secrets.RAILWAY_TOKEN }}
+          RAILWAY_SERVICE: ${{ secrets.RAILWAY_SERVICE }}
+        run: |
+          if [ -z "$RAILWAY_TOKEN" ]; then
+            echo "Falta el secreto RAILWAY_TOKEN en GitHub" >&2
+            exit 1
+          fi
+          if [ -z "$RAILWAY_SERVICE" ]; then
+            echo "Falta el secreto RAILWAY_SERVICE en GitHub" >&2
+            exit 1
+          fi
+          railway up --ci --service "$RAILWAY_SERVICE"

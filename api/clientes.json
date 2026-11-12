@@ -1,0 +1,20 @@
+{
+  "web-lucia": {
+    "key_sha256": "f9af759566d173974236c1742b4a4a0c5841925b727f3b54feaae512ffd0b753",
+    "pasajero_id": "P-1001",
+    "rol": "passenger",
+    "canal": "web"
+  },
+  "web-andres": {
+    "key_sha256": "6fed36aa5d9dca1ece21c0bc1f5e70d339f2dcfd3f2f39d164ed54a56122a1a9",
+    "pasajero_id": "P-1002",
+    "rol": "passenger",
+    "canal": "web"
+  },
+  "kiosco-aep": {
+    "key_sha256": "0632d8d370906b64039b6d80ed6965c6a5f6add0a37f2c4c39546d8a71d744b5",
+    "pasajero_id": null,
+    "rol": "kiosk",
+    "canal": "kiosk"
+  }
+}
